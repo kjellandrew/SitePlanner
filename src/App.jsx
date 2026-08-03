@@ -5,6 +5,8 @@ import ListView from './components/ListView/ListView';
 import PageDetails from './components/PageDetails/PageDetails';
 import ConfirmModal from './components/ConfirmModal/ConfirmModal';
 import PlanSelectorModal from './components/PlanSelectorModal/PlanSelectorModal';
+import PrintModal from './components/PrintModal/PrintModal';
+import PrintView from './components/PrintView/PrintView';
 import { useStore } from './store/useStore';
 
 function App() {
@@ -17,6 +19,10 @@ function App() {
   
   const [planToDelete, setPlanToDelete] = useState(null);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printViewStyle, setPrintViewStyle] = useState('list');
+  const [includeBlocks, setIncludeBlocks] = useState(true);
 
   const plans = useStore(state => state.plans || []);
   const activePlanId = useStore(state => state.activePlanId);
@@ -34,6 +40,24 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Keep printViewStyle in sync with active screen view when opened
+  const handleOpenPrintModal = () => {
+    setPrintViewStyle(view);
+    setIsPrintModalOpen(true);
+  };
+
+  // Keyboard shortcut listener for Cmd+P / Ctrl+P
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+        e.preventDefault();
+        handleOpenPrintModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [view]);
 
   const openEditDetails = (pageId) => {
     setEditingPageId(pageId);
@@ -256,7 +280,7 @@ function App() {
           </button>
           
           <button 
-            onClick={() => window.print()}
+            onClick={handleOpenPrintModal}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}
             title="Print Current View (Cmd/Ctrl + P)"
           >
@@ -338,6 +362,21 @@ function App() {
         <PlanSelectorModal
           isOpen={isPlanModalOpen}
           onClose={() => setIsPlanModalOpen(false)}
+        />
+
+        <PrintModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          printView={printViewStyle}
+          setPrintView={setPrintViewStyle}
+          includeBlocks={includeBlocks}
+          setIncludeBlocks={setIncludeBlocks}
+        />
+
+        {/* Dedicated Printable Area */}
+        <PrintView
+          printView={printViewStyle}
+          includeBlocks={includeBlocks}
         />
 
       </main>

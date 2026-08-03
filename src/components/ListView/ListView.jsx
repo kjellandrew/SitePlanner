@@ -34,6 +34,7 @@ function PageListItem({
 
   const [dropPosition, setDropPosition] = useState(null);
   const dragCounter = React.useRef(0);
+  const containerRef = React.useRef(null);
 
   if (!page || !page.id) return null;
 
@@ -51,11 +52,11 @@ function PageListItem({
     e.stopPropagation();
     if (!draggedPageId || draggedPageId === page.id) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
     const height = rect.height;
 
-    // Increase thresholds for before/after to make reordering easier
     if (offsetY < height * 0.35) {
       setDropPosition('before');
     } else if (offsetY > height * 0.65) {
@@ -69,7 +70,8 @@ function PageListItem({
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current -= 1;
-    if (dragCounter.current === 0) {
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
       setDropPosition(null);
     }
   };
@@ -96,31 +98,34 @@ function PageListItem({
   const isAfter = dropPosition === 'after';
 
   return (
-    <div style={{ marginBottom: '6px', position: 'relative' }}>
-      {/* Background Drop Indicator Placeholder */}
-      {(isBefore || isAfter) && (
+    <div 
+      ref={containerRef}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{ marginBottom: '6px', position: 'relative' }}
+    >
+      {/* Spacer Before */}
+      <div style={{
+        height: isBefore ? '48px' : '0px',
+        transition: 'height 0.2s cubic-bezier(0.2, 0, 0, 1)',
+        overflow: 'hidden',
+        marginLeft: `${depth * 24}px`,
+        marginBottom: isBefore ? '4px' : '0px'
+      }}>
         <div style={{
-          position: 'absolute',
-          left: `${depth * 24}px`,
-          right: 0,
-          top: isBefore ? 0 : 'auto',
-          bottom: isAfter ? 0 : 'auto',
-          height: '46px',
+          height: '44px',
           backgroundColor: 'var(--bg-surface-hover)',
           border: '2px dashed var(--primary-color)',
           borderRadius: 'var(--radius-md)',
-          opacity: 0.5,
-          zIndex: 0
+          opacity: 0.8
         }} />
-      )}
+      </div>
 
       <div 
         draggable={page.id !== 'root'}
         onDragStart={(e) => onDragStart(e, page.id)}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
         style={{
           position: 'relative',
           zIndex: 1,
@@ -131,11 +136,9 @@ function PageListItem({
           borderRadius: 'var(--radius-md)',
           border: borderStyle,
           marginLeft: `${depth * 24}px`,
-          marginTop: isBefore ? '52px' : '0px',
-          marginBottom: isAfter ? '52px' : '0px',
           gap: '10px',
           cursor: 'grab',
-          transition: 'margin 0.25s cubic-bezier(0.2, 0, 0, 1), background-color 0.15s ease, border 0.15s ease',
+          transition: 'background-color 0.15s ease, border 0.15s ease',
           opacity: draggedPageId === page.id ? 0.4 : 1
         }}
       >
@@ -184,6 +187,23 @@ function PageListItem({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Spacer After */}
+      <div style={{
+        height: isAfter ? '48px' : '0px',
+        transition: 'height 0.2s cubic-bezier(0.2, 0, 0, 1)',
+        overflow: 'hidden',
+        marginLeft: `${depth * 24}px`,
+        marginTop: isAfter ? '4px' : '0px'
+      }}>
+        <div style={{
+          height: '44px',
+          backgroundColor: 'var(--bg-surface-hover)',
+          border: '2px dashed var(--primary-color)',
+          borderRadius: 'var(--radius-md)',
+          opacity: 0.8
+        }} />
       </div>
       
       {/* Nested Children */}

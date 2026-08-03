@@ -80,11 +80,18 @@ export default function PlanSelectorModal({ isOpen, onClose }) {
                   <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {plan.name} {plan.isDemo && '(Demo)'}
                   </span>
-                  {isSelected && (
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary-color)', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>
-                      Active
-                    </span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {plan.updatedAt && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        Updated {new Date(plan.updatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                    {isSelected && (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary-color)', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>
+                        Active
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                   {description}
