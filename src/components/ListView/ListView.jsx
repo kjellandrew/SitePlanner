@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { Edit3, ChevronRight, ChevronDown, Plus, Trash2, GripVertical, Unlink, Layers } from 'lucide-react';
 
@@ -32,11 +32,18 @@ function PageListItem({
   const addPage = useStore(state => state.addPage);
 
   const [dropPosition, setDropPosition] = useState(null);
+  const dragCounter = React.useRef(0);
 
   if (!page || !page.id) return null;
 
   const childrenList = Array.isArray(page.children) ? page.children : [];
   const hasChildren = childrenList.length > 0;
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -47,9 +54,10 @@ function PageListItem({
     const offsetY = e.clientY - rect.top;
     const height = rect.height;
 
-    if (offsetY < height * 0.25) {
+    // Increase thresholds for before/after to make reordering easier
+    if (offsetY < height * 0.35) {
       setDropPosition('before');
-    } else if (offsetY > height * 0.75) {
+    } else if (offsetY > height * 0.65) {
       setDropPosition('after');
     } else {
       setDropPosition('child');
@@ -59,12 +67,16 @@ function PageListItem({
   const handleDragLeave = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setDropPosition(null);
+    dragCounter.current -= 1;
+    if (dragCounter.current === 0) {
+      setDropPosition(null);
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounter.current = 0;
     if (dropPosition) {
       onDrop(page.id, dropPosition);
     }
@@ -96,6 +108,7 @@ function PageListItem({
       <div 
         draggable={page.id !== 'root'}
         onDragStart={(e) => onDragStart(e, page.id)}
+        onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
