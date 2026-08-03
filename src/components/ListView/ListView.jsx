@@ -86,22 +86,30 @@ function PageListItem({
   let borderStyle = '1px solid var(--border-color)';
   let bgStyle = 'var(--bg-surface)';
 
-  if (dropPosition === 'before' || dropPosition === 'after') {
-    borderStyle = '2px solid var(--primary-color)';
-  } else if (dropPosition === 'child') {
+  if (dropPosition === 'child') {
     borderStyle = '2px dashed var(--primary-color)';
     bgStyle = 'var(--bg-surface-hover)';
   }
 
+  const isBefore = dropPosition === 'before';
+  const isAfter = dropPosition === 'after';
+
   return (
     <div style={{ marginBottom: '6px', position: 'relative' }}>
-      {dropPosition === 'before' && (
-        <div style={{ 
-          height: '3px', 
-          backgroundColor: 'var(--primary-color)', 
-          borderRadius: '2px', 
-          marginBottom: '2px',
-          marginLeft: `${depth * 24}px`
+      {/* Background Drop Indicator Placeholder */}
+      {(isBefore || isAfter) && (
+        <div style={{
+          position: 'absolute',
+          left: `${depth * 24}px`,
+          right: 0,
+          top: isBefore ? 0 : 'auto',
+          bottom: isAfter ? 0 : 'auto',
+          height: '46px',
+          backgroundColor: 'var(--bg-surface-hover)',
+          border: '2px dashed var(--primary-color)',
+          borderRadius: 'var(--radius-md)',
+          opacity: 0.5,
+          zIndex: 0
         }} />
       )}
 
@@ -113,6 +121,8 @@ function PageListItem({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         style={{
+          position: 'relative',
+          zIndex: 1,
           display: 'flex',
           alignItems: 'center',
           padding: '10px 14px',
@@ -120,9 +130,11 @@ function PageListItem({
           borderRadius: 'var(--radius-md)',
           border: borderStyle,
           marginLeft: `${depth * 24}px`,
+          marginTop: isBefore ? '52px' : '0px',
+          marginBottom: isAfter ? '52px' : '0px',
           gap: '10px',
           cursor: 'grab',
-          transition: 'all 0.15s ease',
+          transition: 'margin 0.25s cubic-bezier(0.2, 0, 0, 1), background-color 0.15s ease, border 0.15s ease',
           opacity: draggedPageId === page.id ? 0.4 : 1
         }}
       >
@@ -172,16 +184,6 @@ function PageListItem({
           )}
         </div>
       </div>
-
-      {dropPosition === 'after' && (
-        <div style={{ 
-          height: '3px', 
-          backgroundColor: 'var(--primary-color)', 
-          borderRadius: '2px', 
-          marginTop: '2px',
-          marginLeft: `${depth * 24}px`
-        }} />
-      )}
       
       {/* Nested Children */}
       {isExpanded && hasChildren && (
