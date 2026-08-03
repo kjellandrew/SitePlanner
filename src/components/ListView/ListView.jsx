@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { Edit3, ChevronRight, ChevronDown, Plus, Trash2, GripVertical, Unlink, Layers } from 'lucide-react';
+import ConfirmModal from '../ConfirmModal/ConfirmModal';
 
 const buildTree = (pages = [], parentId = null, visited = new Set()) => {
   if (!Array.isArray(pages)) return [];
@@ -26,9 +27,9 @@ function PageListItem({
   toggleExpand, 
   onDragStart, 
   onDrop, 
-  draggedPageId 
+  draggedPageId,
+  onDeleteNode
 }) {
-  const deletePage = useStore(state => state.deletePage);
   const addPage = useStore(state => state.addPage);
 
   const [dropPosition, setDropPosition] = useState(null);
@@ -175,7 +176,7 @@ function PageListItem({
           </button>
           {page.id !== 'root' && (
             <button 
-              onClick={() => deletePage(page.id)}
+              onClick={() => onDeleteNode(page.id)}
               style={{ padding: '6px', color: 'var(--danger-color)', borderRadius: 'var(--radius-md)' }}
               title="Delete Page"
             >
@@ -199,6 +200,7 @@ function PageListItem({
               onDragStart={onDragStart}
               onDrop={onDrop}
               draggedPageId={draggedPageId}
+              onDeleteNode={onDeleteNode}
             />
           ))}
         </div>
@@ -209,6 +211,8 @@ function PageListItem({
 
 export default function ListView({ onEditNode }) {
   const pages = useStore(state => state.pages || []);
+  const deletePage = useStore(state => state.deletePage);
+  const hasDependencies = useStore(state => state.hasDependencies);
   const reorderPage = useStore(state => state.reorderPage);
   const reparentPage = useStore(state => state.reparentPage);
   const updatePage = useStore(state => state.updatePage);
@@ -216,6 +220,15 @@ export default function ListView({ onEditNode }) {
 
   const [draggedPageId, setDraggedPageId] = useState(null);
   const [activeFloatingDropId, setActiveFloatingDropId] = useState(null);
+  const [pageToDelete, setPageToDelete] = useState(null);
+
+  const handleRequestDelete = (pageId) => {
+    if (hasDependencies(pageId)) {
+      setPageToDelete(pageId);
+    } else {
+      deletePage(pageId);
+    }
+  };
 
   const [expandedNodes, setExpandedNodes] = useState(() => {
     const initial = {};
@@ -300,6 +313,7 @@ export default function ListView({ onEditNode }) {
               onDragStart={handleDragStart}
               onDrop={handleDropOnPage}
               draggedPageId={draggedPageId}
+              onDeleteNode={handleRequestDelete}
             />
           ))}
         </div>
@@ -421,6 +435,7 @@ export default function ListView({ onEditNode }) {
                     onDragStart={handleDragStart}
                     onDrop={handleDropOnPage}
                     draggedPageId={draggedPageId}
+                    onDeleteNode={handleRequestDelete}
                   />
                 </div>
               );
@@ -429,6 +444,17 @@ export default function ListView({ onEditNode }) {
         )}
       </div>
 
+      <ConfirmModal
+        isOpen={!!pageToDelete}
+        onClose={() => setPageToDelete(null)}
+        onConfirm={() => {
+          if (pageToDelete) deletePage(pageToDelete);
+        }}
+        title="Delete Page?"
+        isDanger={true}
+        confirmText="Delete"
+        message="This page has child pages, content blocks, or attachments. Deleting it will also permanently delete all associated items."
+      />
     </div>
   );
 }

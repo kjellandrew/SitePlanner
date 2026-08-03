@@ -15,6 +15,7 @@ import dagre from 'dagre';
 import PageNode from './PageNode';
 import { useStore } from '../../store/useStore';
 import { Plus, Unlink } from 'lucide-react';
+import ConfirmModal from '../ConfirmModal/ConfirmModal';
 
 const nodeTypes = {
   pageNode: PageNode,
@@ -86,12 +87,25 @@ function FlowCanvas({ onEditNode }) {
   const addPage = useStore(state => state.addPage);
   const addDisconnectedPage = useStore(state => state.addDisconnectedPage);
   const deletePage = useStore(state => state.deletePage);
+  const hasDependencies = useStore(state => state.hasDependencies);
 
   const { getIntersectingNodes, fitView } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [dragTargetNodeId, setDragTargetNodeId] = useState(null);
+  
+  const [pageToDelete, setPageToDelete] = useState(null);
+  const [selectedNode, setSelectedNode] = useState(null);
+
+  const handleRequestDelete = (pageId) => {
+    if (hasDependencies(pageId)) {
+      setPageToDelete(pageId);
+    } else {
+      deletePage(pageId);
+      setSelectedNode(null);
+    }
+  };
 
   // Transform pages and blocks into nodes and edges (hierarchy + dashed block routing links)
   useEffect(() => {
@@ -189,8 +203,6 @@ function FlowCanvas({ onEditNode }) {
     [getIntersectingNodes, reparentPage]
   );
 
-  const [selectedNode, setSelectedNode] = useState(null);
-
   return (
     <ReactFlow
       nodes={nodes}
@@ -257,7 +269,7 @@ function FlowCanvas({ onEditNode }) {
 
         {selectedNode && selectedNode !== 'root' && (
           <button
-            onClick={() => deletePage(selectedNode)}
+            onClick={() => handleRequestDelete(selectedNode)}
             style={{
               padding: '8px 14px',
               backgroundColor: 'var(--danger-color)',
@@ -271,6 +283,21 @@ function FlowCanvas({ onEditNode }) {
           </button>
         )}
       </Panel>
+
+      <ConfirmModal
+        isOpen={!!pageToDelete}
+        onClose={() => setPageToDelete(null)}
+        onConfirm={() => {
+          if (pageToDelete) {
+            deletePage(pageToDelete);
+            setSelectedNode(null);
+          }
+        }}
+        title="Delete Page?"
+        isDanger={true}
+        confirmText="Delete"
+        message="This page has child pages, content blocks, or attachments. Deleting it will also permanently delete all associated items."
+      />
     </ReactFlow>
   );
 }

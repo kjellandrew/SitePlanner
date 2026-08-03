@@ -218,6 +218,14 @@ export const useStore = create(
             pages: (plan.pages || []).map(p => p.id === id ? { ...p, ...updates } : p)
           }));
         },
+
+        hasDependencies: (pageId) => {
+          const state = get();
+          const children = (state.pages || []).filter(p => p.parentId === pageId);
+          const blocks = (state.blocks && state.blocks[pageId]) || [];
+          const attachments = (state.attachments && state.attachments[pageId]) || [];
+          return children.length > 0 || blocks.length > 0 || attachments.length > 0;
+        },
         
         deletePage: (id) => {
           const state = get();

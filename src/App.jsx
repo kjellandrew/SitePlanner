@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sun, Moon, Download, Upload, LayoutTemplate, ListTree, FolderKanban, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { Sun, Moon, Download, Upload, LayoutTemplate, ListTree, FolderKanban, Plus, Edit2, Trash2, AlertTriangle, Printer } from 'lucide-react';
 import FlowView from './components/FlowView/FlowView';
 import ListView from './components/ListView/ListView';
 import PageDetails from './components/PageDetails/PageDetails';
+import ConfirmModal from './components/ConfirmModal/ConfirmModal';
+import PlanSelectorModal from './components/PlanSelectorModal/PlanSelectorModal';
 import { useStore } from './store/useStore';
 
 function App() {
@@ -12,6 +14,9 @@ function App() {
   
   const [isRenamingPlan, setIsRenamingPlan] = useState(false);
   const [planNameInput, setPlanNameInput] = useState('');
+  
+  const [planToDelete, setPlanToDelete] = useState(null);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
 
   const plans = useStore(state => state.plans || []);
   const activePlanId = useStore(state => state.activePlanId);
@@ -97,9 +102,15 @@ function App() {
 
           <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)' }}></div>
           
-          {/* Multi-Plan Dropdown Selector */}
+          {/* Multi-Plan Selector Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FolderKanban size={18} style={{ color: 'var(--text-secondary)' }} />
+            <button 
+              onClick={() => setIsPlanModalOpen(true)}
+              style={{ color: 'var(--text-secondary)', display: 'flex', padding: '4px' }}
+              title="Open Saved Plans"
+            >
+              <FolderKanban size={18} />
+            </button>
             
             {isRenamingPlan ? (
               <input
@@ -124,25 +135,9 @@ function App() {
                 }}
               />
             ) : (
-              <select
-                value={activePlanId}
-                onChange={(e) => switchPlan(e.target.value)}
-                style={{
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  backgroundColor: 'var(--bg-color)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '5px 10px',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                {plans.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}{p.isDemo ? ' (Demo)' : ''}</option>
-                ))}
-              </select>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', padding: '5px 4px' }}>
+                {activePlan.name} {activePlan.isDemo ? '(Demo)' : ''}
+              </span>
             )}
 
             {/* Plan Action Buttons */}
@@ -175,7 +170,7 @@ function App() {
 
             {plans.length > 1 && !activePlan.isDemo && (
               <button 
-                onClick={() => deletePlan(activePlanId)} 
+                onClick={() => setPlanToDelete(activePlanId)} 
                 style={{ padding: '6px', color: 'var(--danger-color)', borderRadius: 'var(--radius-md)' }} 
                 title="Delete Current Plan"
               >
@@ -260,6 +255,15 @@ function App() {
             <span style={{ fontSize: '0.875rem' }}>Export</span>
           </button>
           
+          <button 
+            onClick={() => window.print()}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}
+            title="Print Current View (Cmd/Ctrl + P)"
+          >
+            <Printer size={18} />
+            <span style={{ fontSize: '0.875rem' }}>Print</span>
+          </button>
+
           <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)' }}></div>
           
           <button onClick={toggleTheme} style={{ color: 'var(--text-secondary)' }} title="Toggle Theme">
@@ -297,6 +301,45 @@ function App() {
             />
           </>
         )}
+
+        <ConfirmModal
+          isOpen={!!planToDelete}
+          onClose={() => setPlanToDelete(null)}
+          onConfirm={() => {
+            if (planToDelete) deletePlan(planToDelete);
+          }}
+          title="Delete Plan?"
+          isDanger={true}
+          confirmText="Delete Plan"
+          message="Are you sure you want to delete this plan? This action is permanent and cannot be undone."
+        >
+          <div style={{ marginTop: '12px' }}>
+            We strongly recommend downloading a backup first. <br/>
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                exportData();
+              }} 
+              style={{ 
+                color: 'var(--primary-color)', 
+                background: 'none', 
+                border: 'none', 
+                padding: 0, 
+                textDecoration: 'underline', 
+                cursor: 'pointer',
+                fontSize: '0.9375rem'
+              }}
+            >
+              Click here to download your data as a JSON file.
+            </button>
+          </div>
+        </ConfirmModal>
+
+        <PlanSelectorModal
+          isOpen={isPlanModalOpen}
+          onClose={() => setIsPlanModalOpen(false)}
+        />
+
       </main>
     </div>
   );

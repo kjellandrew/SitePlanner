@@ -166,3 +166,43 @@ button {
   border-color: var(--primary-color) !important;
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.4), 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
+
+/* Print Styles */
+@media print {
+  nav {
+    display: none !important;
+  }
+  
+  .details-panel, 
+  .react-flow__panel,
+  .react-flow__minimap,
+  .react-flow__controls {
+    display: none !important;
+  }
+  
+  html, body, .app-container, main {
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  .react-flow__background {
+    display: none !important;
+  }
+  
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force light theme colors for printing */
+  :root {
+    --bg-color: #ffffff;
+    --bg-surface: #ffffff;
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --border-color: #cccccc;
+  }
+}
