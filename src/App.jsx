@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sun, Moon, Download, Upload, LayoutTemplate, ListTree, FolderKanban, Plus, Edit2, Trash2, AlertTriangle, Printer } from 'lucide-react';
+import { Sun, Moon, Download, Upload, LayoutTemplate, ListTree, FolderKanban, Plus, Edit2, Trash2, AlertTriangle, Printer, HelpCircle } from 'lucide-react';
 import FlowView from './components/FlowView/FlowView';
 import ListView from './components/ListView/ListView';
 import PageDetails from './components/PageDetails/PageDetails';
@@ -7,6 +7,8 @@ import ConfirmModal from './components/ConfirmModal/ConfirmModal';
 import PlanSelectorModal from './components/PlanSelectorModal/PlanSelectorModal';
 import PrintModal from './components/PrintModal/PrintModal';
 import PrintView from './components/PrintView/PrintView';
+import WelcomeModal from './components/WelcomeModal/WelcomeModal';
+import TutorialModal from './components/TutorialModal/TutorialModal';
 import { useStore } from './store/useStore';
 
 function App() {
@@ -24,6 +26,9 @@ function App() {
   const [printViewStyle, setPrintViewStyle] = useState('list');
   const [includeBlocks, setIncludeBlocks] = useState(true);
 
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [isTutorialModalOpen, setIsTutorialModalOpen] = useState(false);
+
   const plans = useStore(state => state.plans || []);
   const activePlanId = useStore(state => state.activePlanId);
   const createPlan = useStore(state => state.createPlan);
@@ -37,9 +42,20 @@ function App() {
 
   const activePlan = plans.find(p => p.id === activePlanId) || plans[0] || {};
 
+  // Auto-show Welcome modal if only demo plan exists or on first launch
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    const nonDemoPlans = plans.filter(p => !p.isDemo);
+    const hasSeenWelcome = localStorage.getItem('site_planner_welcomed');
+    
+    if (nonDemoPlans.length === 0 || (!hasSeenWelcome && nonDemoPlans.length <= 1)) {
+      setIsWelcomeModalOpen(true);
+    }
+  }, []);
+
+  const handleCloseWelcome = () => {
+    localStorage.setItem('site_planner_welcomed', 'true');
+    setIsWelcomeModalOpen(false);
+  };
 
   // Keep printViewStyle in sync with active screen view when opened
   const handleOpenPrintModal = () => {
@@ -290,6 +306,10 @@ function App() {
 
           <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)' }}></div>
           
+          <button onClick={() => setIsTutorialModalOpen(true)} style={{ color: 'var(--text-secondary)' }} title="Open Feature Tutorial">
+            <HelpCircle size={20} />
+          </button>
+
           <button onClick={toggleTheme} style={{ color: 'var(--text-secondary)' }} title="Toggle Theme">
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
@@ -371,6 +391,21 @@ function App() {
           setPrintView={setPrintViewStyle}
           includeBlocks={includeBlocks}
           setIncludeBlocks={setIncludeBlocks}
+        />
+
+        <WelcomeModal
+          isOpen={isWelcomeModalOpen}
+          onClose={handleCloseWelcome}
+          onStartTutorial={() => {
+            handleCloseWelcome();
+            setIsTutorialModalOpen(true);
+          }}
+          onCreatePlan={() => createPlan(`Plan ${plans.length + 1}`)}
+        />
+
+        <TutorialModal
+          isOpen={isTutorialModalOpen}
+          onClose={() => setIsTutorialModalOpen(false)}
         />
 
         {/* Dedicated Printable Area */}
