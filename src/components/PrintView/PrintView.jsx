@@ -17,58 +17,53 @@ const buildTree = (pages = [], parentId = null, visited = new Set()) => {
     });
 };
 
-function PrintListItem({ page, numberPrefix = '', depth = 0, includeBlocks, blocksMap }) {
+function PrintUnorderedNode({ page, includeBlocks, blocksMap }) {
   const pageBlocks = (page && page.id && blocksMap && blocksMap[page.id]) || [];
+  const children = Array.isArray(page.children) ? page.children : [];
 
   return (
-    <div style={{ marginLeft: depth > 0 ? '24px' : '0px', marginBottom: '12px', pageBreakInside: 'avoid' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-        <span style={{ fontWeight: 700, fontSize: '1rem', color: '#111827' }}>
-          {numberPrefix} {page.title || 'Untitled Page'}
+    <li style={{ marginBottom: '10px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+      <div style={{ lineHeight: 1.4 }}>
+        <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#000000' }}>
+          {page.title || 'Untitled Page'}
         </span>
+        {page.description && (
+          <div style={{ fontSize: '0.8125rem', color: '#4b5563', fontStyle: 'italic', marginTop: '2px' }}>
+            {page.description}
+          </div>
+        )}
       </div>
 
-      {page.description && (
-        <div style={{ fontSize: '0.875rem', color: '#4b5563', marginTop: '2px', marginLeft: '4px' }}>
-          {page.description}
-        </div>
-      )}
-
-      {/* Optional Blocks */}
+      {/* Optional Page Content Blocks */}
       {includeBlocks && pageBlocks.length > 0 && (
-        <div style={{ marginTop: '6px', marginLeft: '12px', paddingLeft: '10px', borderLeft: '2px solid #e5e7eb' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', marginBottom: '4px' }}>
-            Page Content Blocks:
-          </div>
+        <ul style={{ marginTop: '4px', marginBottom: '6px', paddingLeft: '18px', listStyleType: 'square' }}>
           {pageBlocks.map((b, i) => (
-            <div key={b.id || i} style={{ fontSize: '0.8125rem', marginBottom: '4px' }}>
-              <span style={{ fontWeight: 600, color: '#1f2937' }}>• {b.title || `Block ${i + 1}`}</span>
-              {b.description && <span style={{ color: '#4b5563' }}>: {b.description}</span>}
-            </div>
+            <li key={b.id || i} style={{ fontSize: '0.75rem', color: '#374151', margin: '2px 0', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+              <strong>{b.title || `Block ${i + 1}`}</strong>
+              {b.description && <span> — {b.description}</span>}
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      {/* Children */}
-      {Array.isArray(page.children) && page.children.length > 0 && (
-        <div style={{ marginTop: '8px' }}>
-          {page.children.map((child, index) => (
-            <PrintListItem
+      {/* Children List */}
+      {children.length > 0 && (
+        <ul style={{ marginTop: '6px', paddingLeft: '20px', listStyleType: 'inherit' }}>
+          {children.map(child => (
+            <PrintUnorderedNode
               key={child.id}
               page={child}
-              numberPrefix={`${numberPrefix}${index + 1}.`}
-              depth={depth + 1}
               includeBlocks={includeBlocks}
               blocksMap={blocksMap}
             />
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </li>
   );
 }
 
-export default function PrintView({ printView = 'list', includeBlocks = false }) {
+export default function PrintView({ includeBlocks = true }) {
   const pages = useStore(state => state.pages || []);
   const blocksMap = useStore(state => state.blocks || {});
   const plans = useStore(state => state.plans || []);
@@ -83,141 +78,70 @@ export default function PrintView({ printView = 'list', includeBlocks = false })
 
   return (
     <div 
+      id="printable-area"
       className="print-only" 
       style={{ 
-        fontFamily: 'Inter, system-ui, sans-serif', 
-        color: '#111827', 
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
+        color: '#000000', 
         backgroundColor: '#ffffff',
-        padding: '32px',
-        maxWidth: '900px',
-        margin: '0 auto'
+        padding: '24px 32px',
+        maxWidth: '800px',
+        margin: '0 auto',
+        fontSize: '13px'
       }}
     >
-      {/* Print Document Header */}
-      <div style={{ borderBottom: '2px solid #111827', paddingBottom: '16px', marginBottom: '28px' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: '#111827' }}>
+      {/* Document Header */}
+      <div style={{ borderBottom: '2px solid #000000', paddingBottom: '12px', marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#000000' }}>
           {activePlan.name || 'Sitemap Plan'}
         </h1>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.875rem', color: '#6b7280' }}>
-          <span>Generated by Site Planner</span>
-          <span>Printed on {new Date().toLocaleDateString(undefined, { dateStyle: 'long' })}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.75rem', color: '#6b7280' }}>
+          <span>Site Planner — Sitemap Hierarchy</span>
+          <span>Printed {new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
         </div>
       </div>
 
-      {printView === 'list' ? (
-        /* NESTED LIST PRINT LAYOUT */
-        <div>
-          {/* Main Sitemap Hierarchy */}
-          <div style={{ marginBottom: '36px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, borderBottom: '1px solid #e5e7eb', paddingBottom: '8px', marginBottom: '16px' }}>
-              Sitemap Hierarchy
-            </h2>
-            {mainTree.map((rootNode, index) => (
-              <PrintListItem
-                key={rootNode.id}
-                page={rootNode}
-                numberPrefix={`${index + 1}.`}
-                depth={0}
-                includeBlocks={includeBlocks}
-                blocksMap={blocksMap}
-              />
-            ))}
-          </div>
+      {/* Main Sitemap Hierarchy */}
+      <div style={{ marginBottom: '32px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+        <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#000000', margin: '0 0 12px 0', borderBottom: '1px solid #d1d5db', paddingBottom: '4px' }}>
+          Sitemap Hierarchy
+        </h2>
+        <ul style={{ paddingLeft: '20px', margin: 0, listStyleType: 'disc' }}>
+          {mainTree.map(rootNode => (
+            <PrintUnorderedNode
+              key={rootNode.id}
+              page={rootNode}
+              includeBlocks={includeBlocks}
+              blocksMap={blocksMap}
+            />
+          ))}
+        </ul>
+      </div>
 
-          {/* Floating Sections */}
-          {floatingRoots.length > 0 && (
-            <div style={{ pageBreakBefore: 'auto' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, borderBottom: '1px solid #e5e7eb', paddingBottom: '8px', marginBottom: '16px' }}>
-                Floating Sections
-              </h2>
-              {floatingRoots.map((fp, index) => {
-                const fpTree = { ...fp, children: buildTree(safePages, fp.id) };
-                const secTitle = fp.sectionTitle || `${fp.title || 'Floating'} Section`;
-                return (
-                  <div key={fp.id} style={{ marginBottom: '24px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#374151', marginBottom: '8px' }}>
-                      {secTitle}
-                    </div>
-                    <PrintListItem
-                      page={fpTree}
-                      numberPrefix={`F${index + 1}.`}
-                      depth={0}
-                      includeBlocks={includeBlocks}
-                      blocksMap={blocksMap}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        /* CARD MAP PRINT LAYOUT */
-        <div>
-          <div style={{ marginBottom: '36px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, borderBottom: '1px solid #e5e7eb', paddingBottom: '8px', marginBottom: '20px' }}>
-              Sitemap Cards Overview
-            </h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
-              {safePages.map((page) => {
-                const pageBlocks = (page.id && blocksMap && blocksMap[page.id]) || [];
-                const isRoot = page.id === 'root';
-                const isFloating = page.parentId === null && !isRoot;
-
-                return (
-                  <div 
-                    key={page.id}
-                    style={{
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      padding: '16px',
-                      backgroundColor: '#f9fafb',
-                      pageBreakInside: 'avoid',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
-                        {page.title || 'Untitled Page'}
-                      </span>
-                      {isRoot && (
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, backgroundColor: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px' }}>
-                          Root
-                        </span>
-                      )}
-                      {isFloating && (
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, backgroundColor: '#f3e8ff', color: '#6b21a8', padding: '2px 6px', borderRadius: '4px' }}>
-                          Floating
-                        </span>
-                      )}
-                    </div>
-
-                    {page.description && (
-                      <p style={{ margin: 0, fontSize: '0.8125rem', color: '#4b5563', lineHeight: 1.4 }}>
-                        {page.description}
-                      </p>
-                    )}
-
-                    {includeBlocks && pageBlocks.length > 0 && (
-                      <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #e5e7eb' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: '4px' }}>
-                          Blocks:
-                        </div>
-                        {pageBlocks.map((b, i) => (
-                          <div key={b.id || i} style={{ fontSize: '0.75rem', color: '#374151' }}>
-                            • <strong>{b.title || `Block ${i + 1}`}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+      {/* Floating Sections */}
+      {floatingRoots.length > 0 && (
+        <div style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#000000', margin: '0 0 12px 0', borderBottom: '1px solid #d1d5db', paddingBottom: '4px' }}>
+            Floating Sections
+          </h2>
+          {floatingRoots.map(fp => {
+            const fpTree = { ...fp, children: buildTree(safePages, fp.id) };
+            const secTitle = fp.sectionTitle || `${fp.title || 'Floating'} Section`;
+            return (
+              <div key={fp.id} style={{ marginBottom: '20px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151', margin: '0 0 6px 0' }}>
+                  {secTitle}
+                </h3>
+                <ul style={{ paddingLeft: '20px', margin: 0, listStyleType: 'disc' }}>
+                  <PrintUnorderedNode
+                    page={fpTree}
+                    includeBlocks={includeBlocks}
+                    blocksMap={blocksMap}
+                  />
+                </ul>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

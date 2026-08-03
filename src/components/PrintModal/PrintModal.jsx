@@ -5,8 +5,6 @@ import { useStore } from '../../store/useStore';
 export default function PrintModal({ 
   isOpen, 
   onClose, 
-  printView, 
-  setPrintView, 
   includeBlocks, 
   setIncludeBlocks 
 }) {
@@ -66,17 +64,16 @@ export default function PrintModal({
         </div>
 
         <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-          Configure your print layout for <strong>{activePlan.name || 'Sitemap Plan'}</strong>.
+          Print a clean, formatted document for <strong>{activePlan.name || 'Sitemap Plan'}</strong>.
         </div>
 
         {/* View Mode Selection */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Print Layout Style
+            Print Layout Format
           </label>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
-              onClick={() => setPrintView('list')}
               style={{
                 flex: 1,
                 display: 'flex',
@@ -85,18 +82,20 @@ export default function PrintModal({
                 gap: '8px',
                 padding: '10px',
                 borderRadius: 'var(--radius-md)',
-                border: `1px solid ${printView === 'list' ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                backgroundColor: printView === 'list' ? 'var(--bg-surface-hover)' : 'var(--bg-color)',
-                color: printView === 'list' ? 'var(--primary-color)' : 'var(--text-primary)',
-                fontWeight: 500,
-                fontSize: '0.875rem'
+                border: '1px solid var(--primary-color)',
+                backgroundColor: 'var(--bg-surface-hover)',
+                color: 'var(--primary-color)',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                cursor: 'default'
               }}
             >
               <FileText size={16} />
-              Nested List
+              Nested List View
             </button>
             <button
-              onClick={() => setPrintView('map')}
+              disabled
+              title="Map view print coming soon!"
               style={{
                 flex: 1,
                 display: 'flex',
@@ -105,15 +104,16 @@ export default function PrintModal({
                 gap: '8px',
                 padding: '10px',
                 borderRadius: 'var(--radius-md)',
-                border: `1px solid ${printView === 'map' ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                backgroundColor: printView === 'map' ? 'var(--bg-surface-hover)' : 'var(--bg-color)',
-                color: printView === 'map' ? 'var(--primary-color)' : 'var(--text-primary)',
-                fontWeight: 500,
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-color)',
+                color: 'var(--text-secondary)',
+                opacity: 0.5,
+                cursor: 'not-allowed',
                 fontSize: '0.875rem'
               }}
             >
               <LayoutTemplate size={16} />
-              Card Map
+              Card Map (Coming Soon)
             </button>
           </div>
         </div>
@@ -168,7 +168,7 @@ export default function PrintModal({
               border: 'none',
               backgroundColor: 'var(--primary-color)',
               color: '#ffffff',
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: 'pointer'
             }}
           >

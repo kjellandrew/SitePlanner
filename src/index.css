@@ -176,8 +176,15 @@ button {
 
 /* Print Styles */
 @media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
   .no-print,
   nav,
+  main,
+  .app-container,
   .details-panel, 
   .react-flow__panel,
   .react-flow__minimap,
@@ -185,15 +192,22 @@ button {
     display: none !important;
   }
 
-  .print-only {
+  .print-only,
+  #printable-area {
     display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
   }
   
-  html, body, .app-container, main {
+  html, body {
     height: auto !important;
     overflow: visible !important;
-    background-color: white !important;
-    color: black !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
   }
   
   * {

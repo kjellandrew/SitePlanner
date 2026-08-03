@@ -123,8 +123,9 @@ function App() {
   };
 
   return (
-    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* Navbar */}
+    <>
+      <div className="app-container no-print" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+        {/* Navbar */}
       <nav style={{ 
         display: 'flex', 
         alignItems: 'center', 
@@ -387,8 +388,6 @@ function App() {
         <PrintModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
-          printView={printViewStyle}
-          setPrintView={setPrintViewStyle}
           includeBlocks={includeBlocks}
           setIncludeBlocks={setIncludeBlocks}
         />
@@ -408,14 +407,14 @@ function App() {
           onClose={() => setIsTutorialModalOpen(false)}
         />
 
-        {/* Dedicated Printable Area */}
-        <PrintView
-          printView={printViewStyle}
-          includeBlocks={includeBlocks}
-        />
-
       </main>
     </div>
+
+    {/* Dedicated Printable Area (only visible during window.print()) */}
+    <PrintView
+      includeBlocks={includeBlocks}
+    />
+  </>
   );
 }
 
