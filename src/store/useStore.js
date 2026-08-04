@@ -112,16 +112,20 @@ export const useStore = create(
             blocks: JSON.parse(JSON.stringify(state.blocks || {})),
             attachments: JSON.parse(JSON.stringify(state.attachments || {}))
           };
+          const currentPast = Array.isArray(state.past) ? state.past : [];
           set({
-            past: [...state.past.slice(-20), snapshot],
+            past: [...currentPast.slice(-20), snapshot],
             future: []
           });
         },
 
         undo: () => set((state) => {
-          if (state.past.length === 0) return state;
-          const newPast = [...state.past];
+          const pastStack = Array.isArray(state.past) ? state.past : [];
+          if (pastStack.length === 0) return state;
+          const newPast = [...pastStack];
           const previous = newPast.pop();
+          if (!previous) return state;
+
           const currentSnapshot = {
             pages: JSON.parse(JSON.stringify(state.pages || [])),
             blocks: JSON.parse(JSON.stringify(state.blocks || {})),
@@ -129,13 +133,13 @@ export const useStore = create(
           };
 
           const activeId = state.activePlanId;
-          const newPlans = state.plans.map(plan => {
+          const newPlans = (state.plans || []).map(plan => {
             if (plan.id === activeId) {
               return {
                 ...plan,
-                pages: previous.pages,
-                blocks: previous.blocks,
-                attachments: previous.attachments,
+                pages: previous.pages || [],
+                blocks: previous.blocks || {},
+                attachments: previous.attachments || {},
                 updatedAt: Date.now()
               };
             }
@@ -144,18 +148,21 @@ export const useStore = create(
 
           return {
             plans: newPlans,
-            pages: previous.pages,
-            blocks: previous.blocks,
-            attachments: previous.attachments,
+            pages: previous.pages || [],
+            blocks: previous.blocks || {},
+            attachments: previous.attachments || {},
             past: newPast,
-            future: [currentSnapshot, ...state.future]
+            future: [currentSnapshot, ...(Array.isArray(state.future) ? state.future : [])]
           };
         }),
 
         redo: () => set((state) => {
-          if (state.future.length === 0) return state;
-          const newFuture = [...state.future];
+          const futureStack = Array.isArray(state.future) ? state.future : [];
+          if (futureStack.length === 0) return state;
+          const newFuture = [...futureStack];
           const next = newFuture.shift();
+          if (!next) return state;
+
           const currentSnapshot = {
             pages: JSON.parse(JSON.stringify(state.pages || [])),
             blocks: JSON.parse(JSON.stringify(state.blocks || {})),
@@ -163,13 +170,13 @@ export const useStore = create(
           };
 
           const activeId = state.activePlanId;
-          const newPlans = state.plans.map(plan => {
+          const newPlans = (state.plans || []).map(plan => {
             if (plan.id === activeId) {
               return {
                 ...plan,
-                pages: next.pages,
-                blocks: next.blocks,
-                attachments: next.attachments,
+                pages: next.pages || [],
+                blocks: next.blocks || {},
+                attachments: next.attachments || {},
                 updatedAt: Date.now()
               };
             }
@@ -178,10 +185,10 @@ export const useStore = create(
 
           return {
             plans: newPlans,
-            pages: next.pages,
-            blocks: next.blocks,
-            attachments: next.attachments,
-            past: [...state.past, currentSnapshot],
+            pages: next.pages || [],
+            blocks: next.blocks || {},
+            attachments: next.attachments || {},
+            past: [...(Array.isArray(state.past) ? state.past : []), currentSnapshot],
             future: newFuture
           };
         }),
@@ -585,14 +592,29 @@ export const useStore = create(
       name: 'site-planner-storage-v3',
       // Custom storage filter: Don't persist changes to Demo Plan
       partialize: (state) => ({
-        plans: state.plans.map(plan => {
+        plans: (state.plans || []).map(plan => {
           if (plan.isDemo) {
             return createDefaultPlanData('Demo Plan', true);
           }
           return plan;
         }),
         activePlanId: state.activePlanId
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const currentPlan = (state.plans || []).find(p => p.id === state.activePlanId) || (state.plans || [])[0];
+          if (currentPlan) {
+            useStore.setState({
+              pages: currentPlan.pages || [],
+              blocks: currentPlan.blocks || {},
+              attachments: currentPlan.attachments || {},
+              past: [],
+              future: [],
+              collapsedNodes: {}
+            });
+          }
+        }
+      }
     }
   )
 );
