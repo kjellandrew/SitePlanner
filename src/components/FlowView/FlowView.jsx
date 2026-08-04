@@ -24,12 +24,11 @@ const nodeTypes = {
 const nodeWidth = 300;
 const nodeHeight = 140;
 
-const getLayoutedElements = (nodes, edges, layoutMode = 'TB') => {
+const getLayoutedElements = (nodes, edges) => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-  const rankdir = layoutMode === 'LR' ? 'LR' : 'TB';
-  dagreGraph.setGraph({ rankdir, nodesep: layoutMode === 'LR' ? 60 : 40, ranksep: layoutMode === 'LR' ? 80 : 60 });
+  dagreGraph.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -98,7 +97,6 @@ function FlowCanvas({ onEditNode }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [dragTargetNodeId, setDragTargetNodeId] = useState(null);
-  const [layoutMode, setLayoutMode] = useState('TB'); // 'TB' (Vertical), 'LR' (Horizontal), 'HYBRID'
 
   const isInitialMountRef = useRef(true);
   const newlyCreatedPageIdRef = useRef(null);
@@ -118,16 +116,15 @@ function FlowCanvas({ onEditNode }) {
   // Transform pages and blocks into nodes and edges
   useEffect(() => {
     const safePages = Array.isArray(pages) ? pages : [];
-    
-    // Filter out pages that are descendants of collapsed nodes
-    const getDescendants = (pageId) => {
-      const children = safePages.filter(p => p.parentId === pageId);
-      let ids = [];
-      for (let c of children) {
-        ids.push(c.id, ...getDescendants(c.id));
-      }
-      return ids;
+
+    // Compute depth level for every node (Root = Level 1)
+    const nodeDepths = {};
+    const computeDepth = (id, currentDepth) => {
+      nodeDepths[id] = currentDepth;
+      const children = safePages.filter(p => p.parentId === id);
+      children.forEach(child => computeDepth(child.id, currentDepth + 1));
     };
+    safePages.filter(p => p.parentId === null).forEach(r => computeDepth(r.id, 1));
 
     const hiddenIds = new Set();
     Object.entries(collapsedNodes).forEach(([pageId, isCollapsed]) => {
@@ -200,8 +197,7 @@ function FlowCanvas({ onEditNode }) {
 
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       initialNodes,
-      allEdges,
-      layoutMode
+      allEdges
     );
 
     setNodes(layoutedNodes);
@@ -221,7 +217,7 @@ function FlowCanvas({ onEditNode }) {
         }, 50);
       }
     }
-  }, [pages, blocksMap, collapsedNodes, dragTargetNodeId, layoutMode, setNodes, setEdges, onEditNode, fitView, setCenter]);
+  }, [pages, blocksMap, collapsedNodes, dragTargetNodeId, setNodes, setEdges, onEditNode, fitView, setCenter]);
 
   const onNodeDrag = useCallback(
     (event, node) => {
@@ -277,40 +273,27 @@ function FlowCanvas({ onEditNode }) {
         style={{ backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}
       />
 
-      <Panel position="top-right" style={{ display: 'flex', gap: '8px' }}>
-        {/* Layout Orientation Controls */}
-        <div style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '2px' }}>
-          <button
-            onClick={() => setLayoutMode('TB')}
-            style={{
-              padding: '6px 10px',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: layoutMode === 'TB' ? 'var(--bg-surface-hover)' : 'transparent',
-              color: layoutMode === 'TB' ? 'var(--primary-color)' : 'var(--text-secondary)',
-              fontWeight: 500,
-              fontSize: '0.8125rem',
-              display: 'flex', alignItems: 'center', gap: '4px'
-            }}
-            title="Vertical Layout (Top-to-Bottom)"
-          >
-            <Rows size={15} /> Vertical
-          </button>
-          <button
-            onClick={() => setLayoutMode('LR')}
-            style={{
-              padding: '6px 10px',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: layoutMode === 'LR' ? 'var(--bg-surface-hover)' : 'transparent',
-              color: layoutMode === 'LR' ? 'var(--primary-color)' : 'var(--text-secondary)',
-              fontWeight: 500,
-              fontSize: '0.8125rem',
-              display: 'flex', alignItems: 'center', gap: '4px'
-            }}
-            title="Horizontal Layout (Left-to-Right)"
-          >
-            <Columns size={15} /> Horizontal
-          </button>
-        </div>
+      <Panel position="top-right" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <button
+          onClick={() => {
+            const newId = addDisconnectedPage('New Section');
+            newlyCreatedPageIdRef.current = newId;
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '7px 12px',
+            backgroundColor: 'var(--bg-surface)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+          }}
+          title="Add a new standalone section card"
+        >
+          <GitFork size={15} /> Add Floating
+        </button>
 
         <button
           onClick={() => {

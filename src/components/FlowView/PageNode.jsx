@@ -143,34 +143,6 @@ export default function PageNode({ id, data }) {
         )}
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {/* Add Child Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const newId = addPage(id);
-              if (data.onPageAdded) data.onPageAdded(newId);
-            }}
-            style={{ color: 'var(--primary-color)', padding: '3px 6px', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
-            title="Add Child Page"
-          >
-            <Plus size={14} /> Child
-          </button>
-
-          {/* Add Sibling Button */}
-          {id !== 'root' && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const newId = addSiblingPage(id);
-                if (data.onPageAdded) data.onPageAdded(newId);
-              }}
-              style={{ color: 'var(--text-secondary)', padding: '3px 6px', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '2px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)' }}
-              title="Add Sibling Page"
-            >
-              <PlusCircle size={14} /> Sibling
-            </button>
-          )}
-
           {/* Edit Details Pencil Button */}
           <button 
             onClick={(e) => {
@@ -281,7 +253,7 @@ export default function PageNode({ id, data }) {
       {/* Source handle for outgoing connections */}
       <Handle 
         type="source" 
-        position={data.layoutDirection === 'LR' ? Position.Right : Position.Bottom} 
+        position={Position.Bottom} 
         style={{ background: 'var(--text-secondary)', width: '8px', height: '8px' }}
         isConnectable={false}
       />
