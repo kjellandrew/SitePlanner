@@ -285,27 +285,6 @@ function FlowCanvas({ onEditNode }) {
       <Panel position="top-right" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <button
           onClick={() => {
-            const newId = addDisconnectedPage('New Section');
-            newlyCreatedPageIdRef.current = newId;
-          }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '7px 12px',
-            backgroundColor: 'var(--bg-surface)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-md)',
-            fontSize: '0.8125rem',
-            fontWeight: 500,
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
-          }}
-          title="Add a new standalone section card"
-        >
-          <GitFork size={15} /> Add Floating
-        </button>
-
-        <button
-          onClick={() => {
             const parentId = selectedNode || 'root';
             const newId = addPage(parentId);
             newlyCreatedPageIdRef.current = newId;
