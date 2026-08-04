@@ -14,7 +14,7 @@ import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
 import PageNode from './PageNode';
 import { useStore } from '../../store/useStore';
-import { Plus, Unlink } from 'lucide-react';
+import { Plus, PlusCircle, Unlink, Columns, Rows, GitFork } from 'lucide-react';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 
 const nodeTypes = {
@@ -24,10 +24,12 @@ const nodeTypes = {
 const nodeWidth = 300;
 const nodeHeight = 140;
 
-const getLayoutedElements = (nodes, edges) => {
+const getLayoutedElements = (nodes, edges, layoutMode = 'TB') => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
+
+  const rankdir = layoutMode === 'LR' ? 'LR' : 'TB';
+  dagreGraph.setGraph({ rankdir, nodesep: layoutMode === 'LR' ? 60 : 40, ranksep: layoutMode === 'LR' ? 80 : 60 });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -83,17 +85,23 @@ const getLayoutedElements = (nodes, edges) => {
 function FlowCanvas({ onEditNode }) {
   const pages = useStore(state => state.pages);
   const blocksMap = useStore(state => state.blocks);
+  const collapsedNodes = useStore(state => state.collapsedNodes || {});
   const reparentPage = useStore(state => state.reparentPage);
   const addPage = useStore(state => state.addPage);
+  const addSiblingPage = useStore(state => state.addSiblingPage);
   const addDisconnectedPage = useStore(state => state.addDisconnectedPage);
   const deletePage = useStore(state => state.deletePage);
   const hasDependencies = useStore(state => state.hasDependencies);
 
-  const { getIntersectingNodes, fitView } = useReactFlow();
+  const { getIntersectingNodes, fitView, setCenter } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [dragTargetNodeId, setDragTargetNodeId] = useState(null);
+  const [layoutMode, setLayoutMode] = useState('TB'); // 'TB' (Vertical), 'LR' (Horizontal), 'HYBRID'
+
+  const isInitialMountRef = useRef(true);
+  const newlyCreatedPageIdRef = useRef(null);
   
   const [pageToDelete, setPageToDelete] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -107,24 +115,51 @@ function FlowCanvas({ onEditNode }) {
     }
   };
 
-  // Transform pages and blocks into nodes and edges (hierarchy + dashed block routing links)
+  // Transform pages and blocks into nodes and edges
   useEffect(() => {
-    const sortedPages = [...pages].sort((a, b) => (a.order || 0) - (b.order || 0));
-    const pageIdSet = new Set(pages.map(p => p.id));
+    const safePages = Array.isArray(pages) ? pages : [];
+    
+    // Filter out pages that are descendants of collapsed nodes
+    const getDescendants = (pageId) => {
+      const children = safePages.filter(p => p.parentId === pageId);
+      let ids = [];
+      for (let c of children) {
+        ids.push(c.id, ...getDescendants(c.id));
+      }
+      return ids;
+    };
 
-    const initialNodes = sortedPages.map((page) => ({
-      id: page.id,
-      type: 'pageNode',
-      data: {
-        title: page.title,
-        description: page.description,
-        isDragTarget: page.id === dragTargetNodeId,
-        onEdit: onEditNode,
-      },
-      position: { x: 0, y: 0 },
-    }));
+    const hiddenIds = new Set();
+    Object.entries(collapsedNodes).forEach(([pageId, isCollapsed]) => {
+      if (isCollapsed) {
+        getDescendants(pageId).forEach(id => hiddenIds.add(id));
+      }
+    });
 
-    // 1. Hierarchy Edges (Solid Lines)
+    const visiblePages = safePages.filter(p => !hiddenIds.has(p.id));
+    const sortedPages = [...visiblePages].sort((a, b) => (a.order || 0) - (b.order || 0));
+    const pageIdSet = new Set(visiblePages.map(p => p.id));
+
+    const initialNodes = sortedPages.map((page) => {
+      const childCount = safePages.filter(p => p.parentId === page.id).length;
+      return {
+        id: page.id,
+        type: 'pageNode',
+        data: {
+          title: page.title,
+          description: page.description,
+          childCount,
+          isDragTarget: page.id === dragTargetNodeId,
+          onEdit: onEditNode,
+          onPageAdded: (newId) => {
+            newlyCreatedPageIdRef.current = newId;
+          }
+        },
+        position: { x: 0, y: 0 },
+      };
+    });
+
+    // 1. Hierarchy Edges
     const hierarchyEdges = sortedPages
       .filter((page) => page.parentId !== null && pageIdSet.has(page.parentId))
       .map((page) => ({
@@ -136,7 +171,7 @@ function FlowCanvas({ onEditNode }) {
         style: { stroke: 'var(--border-color)', strokeWidth: 2 }
       }));
 
-    // 2. Block Routing Edges (Dashed Lines)
+    // 2. Block Routing Edges
     const blockEdges = [];
     Object.entries(blocksMap || {}).forEach(([sourcePageId, blocks]) => {
       if (!pageIdSet.has(sourcePageId) || !Array.isArray(blocks)) return;
@@ -165,14 +200,28 @@ function FlowCanvas({ onEditNode }) {
 
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       initialNodes,
-      allEdges
+      allEdges,
+      layoutMode
     );
 
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
 
-    setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
-  }, [pages, blocksMap, dragTargetNodeId, setNodes, setEdges, onEditNode, fitView]);
+    // Initial mount fits view once
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+    } else if (newlyCreatedPageIdRef.current) {
+      // Preserve zoom and center on newly created node!
+      const targetNode = layoutedNodes.find(n => n.id === newlyCreatedPageIdRef.current);
+      if (targetNode) {
+        setTimeout(() => {
+          setCenter(targetNode.position.x + nodeWidth / 2, targetNode.position.y + nodeHeight / 2, { duration: 400 });
+          newlyCreatedPageIdRef.current = null;
+        }, 50);
+      }
+    }
+  }, [pages, blocksMap, collapsedNodes, dragTargetNodeId, layoutMode, setNodes, setEdges, onEditNode, fitView, setCenter]);
 
   const onNodeDrag = useCallback(
     (event, node) => {
@@ -229,10 +278,45 @@ function FlowCanvas({ onEditNode }) {
       />
 
       <Panel position="top-right" style={{ display: 'flex', gap: '8px' }}>
+        {/* Layout Orientation Controls */}
+        <div style={{ display: 'flex', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '2px' }}>
+          <button
+            onClick={() => setLayoutMode('TB')}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: layoutMode === 'TB' ? 'var(--bg-surface-hover)' : 'transparent',
+              color: layoutMode === 'TB' ? 'var(--primary-color)' : 'var(--text-secondary)',
+              fontWeight: 500,
+              fontSize: '0.8125rem',
+              display: 'flex', alignItems: 'center', gap: '4px'
+            }}
+            title="Vertical Layout (Top-to-Bottom)"
+          >
+            <Rows size={15} /> Vertical
+          </button>
+          <button
+            onClick={() => setLayoutMode('LR')}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: layoutMode === 'LR' ? 'var(--bg-surface-hover)' : 'transparent',
+              color: layoutMode === 'LR' ? 'var(--primary-color)' : 'var(--text-secondary)',
+              fontWeight: 500,
+              fontSize: '0.8125rem',
+              display: 'flex', alignItems: 'center', gap: '4px'
+            }}
+            title="Horizontal Layout (Left-to-Right)"
+          >
+            <Columns size={15} /> Horizontal
+          </button>
+        </div>
+
         <button
           onClick={() => {
             const parentId = selectedNode || 'root';
-            addPage(parentId);
+            const newId = addPage(parentId);
+            newlyCreatedPageIdRef.current = newId;
           }}
           style={{
             display: 'flex', alignItems: 'center', gap: '6px',
@@ -246,8 +330,30 @@ function FlowCanvas({ onEditNode }) {
           }}
         >
           <Plus size={16} />
-          Add Child Page
+          Add Child
         </button>
+
+        {selectedNode && selectedNode !== 'root' && (
+          <button
+            onClick={() => {
+              const newId = addSiblingPage(selectedNode);
+              if (newId) newlyCreatedPageIdRef.current = newId;
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 14px',
+              backgroundColor: 'var(--bg-surface)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              fontWeight: 500,
+              fontSize: '0.875rem'
+            }}
+          >
+            <PlusCircle size={16} />
+            Add Sibling
+          </button>
+        )}
 
         <button
           onClick={addDisconnectedPage}
@@ -264,7 +370,7 @@ function FlowCanvas({ onEditNode }) {
           }}
         >
           <Unlink size={16} />
-          Add Floating Page
+          Add Floating
         </button>
 
         {selectedNode && selectedNode !== 'root' && (

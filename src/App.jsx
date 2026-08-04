@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sun, Moon, Download, Upload, LayoutTemplate, ListTree, FolderKanban, Plus, Edit2, Trash2, AlertTriangle, Printer, HelpCircle } from 'lucide-react';
+import { Sun, Moon, Download, Upload, LayoutTemplate, ListTree, FolderKanban, Plus, Edit2, Trash2, AlertTriangle, Printer, HelpCircle, Undo2, Redo2 } from 'lucide-react';
 import FlowView from './components/FlowView/FlowView';
 import ListView from './components/ListView/ListView';
 import PageDetails from './components/PageDetails/PageDetails';
@@ -33,8 +33,12 @@ function App() {
   const activePlanId = useStore(state => state.activePlanId);
   const createPlan = useStore(state => state.createPlan);
   const switchPlan = useStore(state => state.switchPlan);
-  const renamePlan = useStore(state => state.renamePlan);
   const deletePlan = useStore(state => state.deletePlan);
+
+  const undo = useStore(state => state.undo);
+  const redo = useStore(state => state.redo);
+  const past = useStore(state => state.past || []);
+  const future = useStore(state => state.future || []);
 
   const exportData = useStore(state => state.exportData);
   const importData = useStore(state => state.importData);
@@ -63,17 +67,30 @@ function App() {
     setIsPrintModalOpen(true);
   };
 
-  // Keyboard shortcut listener for Cmd+P / Ctrl+P
+  // Keyboard shortcut listener for Cmd+P (Print) and Cmd+Z / Cmd+Shift+Z (Undo/Redo)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
         e.preventDefault();
         handleOpenPrintModal();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          redo();
+        } else {
+          e.preventDefault();
+          undo();
+        }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [view]);
+  }, [view, undo, redo]);
 
   const openEditDetails = (pageId) => {
     setEditingPageId(pageId);
@@ -148,49 +165,14 @@ function App() {
             <button 
               onClick={() => setIsPlanModalOpen(true)}
               style={{ color: 'var(--text-secondary)', display: 'flex', padding: '4px' }}
-              title="Open Saved Plans"
+              title="Open Saved Plans Manager"
             >
               <FolderKanban size={18} />
             </button>
             
-            {isRenamingPlan ? (
-              <input
-                type="text"
-                value={planNameInput}
-                onChange={(e) => setPlanNameInput(e.target.value)}
-                onBlur={handleSaveRename}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveRename();
-                  if (e.key === 'Escape') setIsRenamingPlan(false);
-                }}
-                autoFocus
-                style={{
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  backgroundColor: 'var(--bg-color)',
-                  border: '1px solid var(--primary-color)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '4px 8px',
-                  outline: 'none'
-                }}
-              />
-            ) : (
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', padding: '5px 4px' }}>
-                {activePlan.name} {activePlan.isDemo ? '(Demo)' : ''}
-              </span>
-            )}
-
-            {/* Plan Action Buttons */}
-            {!isRenamingPlan && !activePlan.isDemo && (
-              <button 
-                onClick={handleStartRename} 
-                style={{ padding: '6px', color: 'var(--text-secondary)', borderRadius: 'var(--radius-md)' }} 
-                title="Rename Plan"
-              >
-                <Edit2 size={15} />
-              </button>
-            )}
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', padding: '5px 4px' }}>
+              {activePlan.name} {activePlan.isDemo ? '(Demo)' : ''}
+            </span>
 
             <button 
               onClick={() => createPlan(`Plan ${plans.length + 1}`)} 
@@ -208,16 +190,6 @@ function App() {
             >
               <Plus size={14} /> New Plan
             </button>
-
-            {plans.length > 1 && !activePlan.isDemo && (
-              <button 
-                onClick={() => setPlanToDelete(activePlanId)} 
-                style={{ padding: '6px', color: 'var(--danger-color)', borderRadius: 'var(--radius-md)' }} 
-                title="Delete Current Plan"
-              >
-                <Trash2 size={15} />
-              </button>
-            )}
           </div>
 
           {/* Warning Banner for Unsaved Demo Plan */}
@@ -304,6 +276,36 @@ function App() {
             <Printer size={18} />
             <span style={{ fontSize: '0.875rem' }}>Print</span>
           </button>
+
+          {/* Undo / Redo Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={undo}
+              disabled={past.length === 0}
+              style={{
+                padding: '6px',
+                color: past.length > 0 ? 'var(--text-primary)' : 'var(--border-color)',
+                cursor: past.length > 0 ? 'pointer' : 'default',
+                borderRadius: 'var(--radius-md)'
+              }}
+              title="Undo (Cmd+Z / Ctrl+Z)"
+            >
+              <Undo2 size={18} />
+            </button>
+            <button
+              onClick={redo}
+              disabled={future.length === 0}
+              style={{
+                padding: '6px',
+                color: future.length > 0 ? 'var(--text-primary)' : 'var(--border-color)',
+                cursor: future.length > 0 ? 'pointer' : 'default',
+                borderRadius: 'var(--radius-md)'
+              }}
+              title="Redo (Cmd+Shift+Z / Ctrl+Y)"
+            >
+              <Redo2 size={18} />
+            </button>
+          </div>
 
           <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)' }}></div>
           

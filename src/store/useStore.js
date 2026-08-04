@@ -101,6 +101,97 @@ export const useStore = create(
         pages: initialDefaultPlan.pages,
         blocks: initialDefaultPlan.blocks,
         attachments: initialDefaultPlan.attachments,
+        past: [],
+        future: [],
+        collapsedNodes: {},
+
+        _saveSnapshot: () => {
+          const state = get();
+          const snapshot = {
+            pages: JSON.parse(JSON.stringify(state.pages || [])),
+            blocks: JSON.parse(JSON.stringify(state.blocks || {})),
+            attachments: JSON.parse(JSON.stringify(state.attachments || {}))
+          };
+          set({
+            past: [...state.past.slice(-20), snapshot],
+            future: []
+          });
+        },
+
+        undo: () => set((state) => {
+          if (state.past.length === 0) return state;
+          const newPast = [...state.past];
+          const previous = newPast.pop();
+          const currentSnapshot = {
+            pages: JSON.parse(JSON.stringify(state.pages || [])),
+            blocks: JSON.parse(JSON.stringify(state.blocks || {})),
+            attachments: JSON.parse(JSON.stringify(state.attachments || {}))
+          };
+
+          const activeId = state.activePlanId;
+          const newPlans = state.plans.map(plan => {
+            if (plan.id === activeId) {
+              return {
+                ...plan,
+                pages: previous.pages,
+                blocks: previous.blocks,
+                attachments: previous.attachments,
+                updatedAt: Date.now()
+              };
+            }
+            return plan;
+          });
+
+          return {
+            plans: newPlans,
+            pages: previous.pages,
+            blocks: previous.blocks,
+            attachments: previous.attachments,
+            past: newPast,
+            future: [currentSnapshot, ...state.future]
+          };
+        }),
+
+        redo: () => set((state) => {
+          if (state.future.length === 0) return state;
+          const newFuture = [...state.future];
+          const next = newFuture.shift();
+          const currentSnapshot = {
+            pages: JSON.parse(JSON.stringify(state.pages || [])),
+            blocks: JSON.parse(JSON.stringify(state.blocks || {})),
+            attachments: JSON.parse(JSON.stringify(state.attachments || {}))
+          };
+
+          const activeId = state.activePlanId;
+          const newPlans = state.plans.map(plan => {
+            if (plan.id === activeId) {
+              return {
+                ...plan,
+                pages: next.pages,
+                blocks: next.blocks,
+                attachments: next.attachments,
+                updatedAt: Date.now()
+              };
+            }
+            return plan;
+          });
+
+          return {
+            plans: newPlans,
+            pages: next.pages,
+            blocks: next.blocks,
+            attachments: next.attachments,
+            past: [...state.past, currentSnapshot],
+            future: newFuture
+          };
+        }),
+
+        toggleCollapseNode: (id) => set((state) => ({
+          collapsedNodes: {
+            ...state.collapsedNodes,
+            [id]: !state.collapsedNodes[id]
+          }
+        })),
 
         _updateActivePlan: (updater) => set((state) => {
           const activeId = state.activePlanId;
@@ -177,13 +268,15 @@ export const useStore = create(
         // --- PAGE ACTIONS ---
         addPage: (parentId = 'root') => {
           const state = get();
+          state._saveSnapshot();
           const title = generateUniquePageTitle('New Page', state.pages);
           const siblings = (state.pages || []).filter(p => p.parentId === parentId);
           const maxOrder = siblings.reduce((max, p) => Math.max(max, p.order || 0), -1);
 
+          const newPageId = uuidv4();
           state._updateActivePlan((plan) => ({
             pages: [...(plan.pages || []), { 
-              id: uuidv4(), 
+              id: newPageId, 
               title, 
               description: '', 
               parentId, 
@@ -192,17 +285,54 @@ export const useStore = create(
               sectionDescription: ''
             }]
           }));
+          return newPageId;
+        },
+
+        addSiblingPage: (targetPageId) => {
+          const state = get();
+          const targetPage = (state.pages || []).find(p => p.id === targetPageId);
+          if (!targetPage || targetPage.id === 'root') return null;
+
+          state._saveSnapshot();
+          const parentId = targetPage.parentId;
+          const title = generateUniquePageTitle('New Page', state.pages);
+          const targetOrder = targetPage.order || 0;
+          const newOrder = targetOrder + 1;
+
+          const newPageId = uuidv4();
+          state._updateActivePlan((plan) => ({
+            pages: [
+              ...(plan.pages || []).map(p => {
+                if (p.parentId === parentId && (p.order || 0) > targetOrder) {
+                  return { ...p, order: (p.order || 0) + 1 };
+                }
+                return p;
+              }),
+              {
+                id: newPageId,
+                title,
+                description: '',
+                parentId,
+                order: newOrder,
+                sectionTitle: '',
+                sectionDescription: ''
+              }
+            ]
+          }));
+          return newPageId;
         },
 
         addDisconnectedPage: () => {
           const state = get();
+          state._saveSnapshot();
           const title = generateUniquePageTitle('Floating Page', state.pages);
           const floatingPages = (state.pages || []).filter(p => p.parentId === null && p.id !== 'root');
           const maxOrder = floatingPages.reduce((max, p) => Math.max(max, p.order || 0), -1);
 
+          const newPageId = uuidv4();
           state._updateActivePlan((plan) => ({
             pages: [...(plan.pages || []), {
-              id: uuidv4(),
+              id: newPageId,
               title,
               description: 'Standalone page.',
               parentId: null,
@@ -211,6 +341,7 @@ export const useStore = create(
               sectionDescription: 'Independent group.'
             }]
           }));
+          return newPageId;
         },
         
         updatePage: (id, updates) => {
@@ -230,6 +361,7 @@ export const useStore = create(
         deletePage: (id) => {
           const state = get();
           if (id === 'root') return;
+          state._saveSnapshot();
 
           const getAllChildrenIds = (pageId, allPages) => {
             const children = (allPages || []).filter(p => p.parentId === pageId);
@@ -260,6 +392,7 @@ export const useStore = create(
         reparentPage: (id, newParentId) => {
           const state = get();
           if (id === 'root' || id === newParentId) return;
+          state._saveSnapshot();
           
           if (newParentId !== null) {
             const getAllChildrenIds = (pageId, allPages) => {
@@ -285,6 +418,7 @@ export const useStore = create(
         reorderPage: (draggedId, targetId, position = 'child') => {
           const state = get();
           if (draggedId === 'root' || draggedId === targetId) return;
+          state._saveSnapshot();
           
           const pages = state.pages || [];
           const draggedPage = pages.find(p => p.id === draggedId);

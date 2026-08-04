@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
-import { Edit3, ChevronRight, ChevronDown, Plus, Trash2, GripVertical, Unlink, Layers } from 'lucide-react';
+import { Edit3, ChevronRight, ChevronDown, Plus, PlusCircle, Trash2, GripVertical, Unlink, Layers, FolderMinus, FolderPlus } from 'lucide-react';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
 
 const buildTree = (pages = [], parentId = null, visited = new Set()) => {
@@ -31,6 +31,7 @@ function PageListItem({
   onDeleteNode
 }) {
   const addPage = useStore(state => state.addPage);
+  const addSiblingPage = useStore(state => state.addSiblingPage);
 
   const [dropPosition, setDropPosition] = useState(null);
   const dragCounter = React.useRef(0);
@@ -165,14 +166,23 @@ function PageListItem({
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <button 
             onClick={() => addPage(page.id)}
-            style={{ padding: '6px', color: 'var(--text-secondary)', borderRadius: 'var(--radius-md)' }}
+            style={{ padding: '6px', color: 'var(--primary-color)', borderRadius: 'var(--radius-md)' }}
             title="Add Child Page"
           >
             <Plus size={16} />
           </button>
+          {page.id !== 'root' && (
+            <button 
+              onClick={() => addSiblingPage(page.id)}
+              style={{ padding: '6px', color: 'var(--text-secondary)', borderRadius: 'var(--radius-md)' }}
+              title="Add Sibling Page"
+            >
+              <PlusCircle size={16} />
+            </button>
+          )}
           <button 
             onClick={() => onEditNode(page.id)}
-            style={{ padding: '6px', color: 'var(--primary-color)', borderRadius: 'var(--radius-md)' }}
+            style={{ padding: '6px', color: 'var(--text-secondary)', borderRadius: 'var(--radius-md)' }}
             title="Edit Details"
           >
             <Edit3 size={16} />
@@ -303,22 +313,50 @@ export default function ListView({ onEditNode }) {
             </p>
           </div>
 
-          <button
-            onClick={addDisconnectedPage}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '8px 14px',
-              backgroundColor: 'var(--bg-surface)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              fontWeight: 500,
-              fontSize: '0.875rem'
-            }}
-          >
-            <Unlink size={16} />
-            Add Floating Section
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => {
+                const allExpanded = Object.values(expandedNodes).every(v => v === true);
+                const nextState = {};
+                (pages || []).forEach(p => { if (p && p.id) nextState[p.id] = !allExpanded; });
+                setExpandedNodes(nextState);
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px',
+                backgroundColor: 'var(--bg-surface)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: 500,
+                fontSize: '0.875rem'
+              }}
+              title="Toggle Expand/Collapse All Sections"
+            >
+              {Object.values(expandedNodes).every(v => v === true) ? (
+                <><FolderMinus size={16} /> Collapse All</>
+              ) : (
+                <><FolderPlus size={16} /> Expand All</>
+              )}
+            </button>
+
+            <button
+              onClick={addDisconnectedPage}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px',
+                backgroundColor: 'var(--bg-surface)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: 500,
+                fontSize: '0.875rem'
+              }}
+            >
+              <Unlink size={16} />
+              Add Floating Section
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

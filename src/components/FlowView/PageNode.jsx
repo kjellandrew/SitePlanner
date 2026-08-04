@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Edit3 } from 'lucide-react';
+import { Edit3, Plus, PlusCircle, ChevronDown, ChevronRight, FolderMinus, FolderPlus } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 export default function PageNode({ id, data }) {
   const updatePage = useStore((state) => state.updatePage);
+  const addPage = useStore((state) => state.addPage);
+  const addSiblingPage = useStore((state) => state.addSiblingPage);
+  const toggleCollapseNode = useStore((state) => state.toggleCollapseNode);
+  const collapsedNodes = useStore((state) => state.collapsedNodes || {});
+  const pages = useStore((state) => state.pages || []);
   
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(data.title);
@@ -138,6 +143,34 @@ export default function PageNode({ id, data }) {
         )}
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {/* Add Child Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const newId = addPage(id);
+              if (data.onPageAdded) data.onPageAdded(newId);
+            }}
+            style={{ color: 'var(--primary-color)', padding: '3px 6px', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
+            title="Add Child Page"
+          >
+            <Plus size={14} /> Child
+          </button>
+
+          {/* Add Sibling Button */}
+          {id !== 'root' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const newId = addSiblingPage(id);
+                if (data.onPageAdded) data.onPageAdded(newId);
+              }}
+              style={{ color: 'var(--text-secondary)', padding: '3px 6px', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '2px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)' }}
+              title="Add Sibling Page"
+            >
+              <PlusCircle size={14} /> Sibling
+            </button>
+          )}
+
           {/* Edit Details Pencil Button */}
           <button 
             onClick={(e) => {
@@ -154,7 +187,7 @@ export default function PageNode({ id, data }) {
             }}
             title="Edit Full Details (Blocks & Images)"
           >
-            <Edit3 size={16} />
+            <Edit3 size={15} />
           </button>
         </div>
       </div>
@@ -214,10 +247,41 @@ export default function PageNode({ id, data }) {
         </p>
       )}
 
+      {/* Collapse Subtree Toggle Indicator */}
+      {data.childCount > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleCollapseNode(id);
+            }}
+            style={{
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              color: collapsedNodes[id] ? 'var(--primary-color)' : 'var(--text-secondary)',
+              backgroundColor: collapsedNodes[id] ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-color)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '12px',
+              padding: '2px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            title={collapsedNodes[id] ? 'Expand Subtree' : 'Collapse Subtree'}
+          >
+            {collapsedNodes[id] ? (
+              <><FolderPlus size={12} /> Hidden ({data.childCount})</>
+            ) : (
+              <><FolderMinus size={12} /> Collapse</>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Source handle for outgoing connections */}
       <Handle 
         type="source" 
-        position={Position.Bottom} 
+        position={data.layoutDirection === 'LR' ? Position.Right : Position.Bottom} 
         style={{ background: 'var(--text-secondary)', width: '8px', height: '8px' }}
         isConnectable={false}
       />
