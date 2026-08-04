@@ -126,6 +126,15 @@ function FlowCanvas({ onEditNode }) {
     };
     safePages.filter(p => p.parentId === null).forEach(r => computeDepth(r.id, 1));
 
+    const getDescendants = (pageId) => {
+      const children = safePages.filter(p => p.parentId === pageId);
+      let ids = [];
+      for (let c of children) {
+        ids.push(c.id, ...getDescendants(c.id));
+      }
+      return ids;
+    };
+
     const hiddenIds = new Set();
     Object.entries(collapsedNodes).forEach(([pageId, isCollapsed]) => {
       if (isCollapsed) {
