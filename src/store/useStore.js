@@ -589,8 +589,7 @@ export const useStore = create(
       };
     },
     {
-      name: 'site-planner-storage-v3',
-      // Custom storage filter: Don't persist changes to Demo Plan
+      name: 'site-planner-storage-v4',
       partialize: (state) => ({
         plans: (state.plans || []).map(plan => {
           if (plan.isDemo) {
@@ -598,21 +597,39 @@ export const useStore = create(
           }
           return plan;
         }),
-        activePlanId: state.activePlanId
+        activePlanId: state.activePlanId,
+        pages: state.pages,
+        blocks: state.blocks,
+        attachments: state.attachments
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          const currentPlan = (state.plans || []).find(p => p.id === state.activePlanId) || (state.plans || [])[0];
-          if (currentPlan) {
-            useStore.setState({
-              pages: currentPlan.pages || [],
-              blocks: currentPlan.blocks || {},
-              attachments: currentPlan.attachments || {},
-              past: [],
-              future: [],
-              collapsedNodes: {}
-            });
-          }
+        if (!state || !Array.isArray(state.plans) || state.plans.length === 0) {
+          const freshDemo = createDefaultPlanData('Demo Plan', true);
+          const freshDefault = createDefaultPlanData('Default Sitemap', false);
+          useStore.setState({
+            plans: [freshDefault, freshDemo],
+            activePlanId: freshDefault.id,
+            pages: freshDefault.pages,
+            blocks: freshDefault.blocks,
+            attachments: freshDefault.attachments,
+            past: [],
+            future: [],
+            collapsedNodes: {}
+          });
+          return;
+        }
+
+        const currentPlan = state.plans.find(p => p.id === state.activePlanId) || state.plans[0];
+        if (currentPlan) {
+          useStore.setState({
+            activePlanId: currentPlan.id,
+            pages: currentPlan.pages || [],
+            blocks: currentPlan.blocks || {},
+            attachments: currentPlan.attachments || {},
+            past: [],
+            future: [],
+            collapsedNodes: {}
+          });
         }
       }
     }
